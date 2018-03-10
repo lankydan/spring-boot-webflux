@@ -23,6 +23,14 @@ public class Person {
     this.age = age;
   }
 
+  public Person(Person person, UUID id) {
+    this.id = id;
+    this.firstName = person.firstName;
+    this.lastName = person.lastName;
+    this.country = person.country;
+    this.age = person.age;
+  }
+
   public UUID getId() {
     return id;
   }

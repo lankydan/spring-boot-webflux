@@ -1,31 +1,68 @@
 package com.lankydanblog.tutorial.client;
 
-import java.time.LocalDateTime;
-
 import com.lankydanblog.tutorial.person.Person;
-import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+
+import java.util.UUID;
+
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 
 public class Client {
 
   private WebClient client = WebClient.create("http://localhost:8080");
 
-  public void printEvents() {
-    final Mono<ClientResponse> clientResponse = client.get()
-                                                  .uri("/events/{type}?time={time}", "notification", LocalDateTime.now().minusDays(10))
-                                                  .accept(MediaType.APPLICATION_JSON).exchange();
-    clientResponse.flatMapMany(response -> response.bodyToFlux(Person.class)).subscribe(person -> System.out.println("Person of type: " + person.getStartTime()));
+  public void doStuff() {
 
-    final Mono<ClientResponse> clientResponse2 = client.get()
-                                                  .uri("/events/{type}", "notification")
-                                                  .accept(MediaType.APPLICATION_JSON).exchange();
-    clientResponse2.flatMapMany(response -> response.bodyToFlux(Person.class)).subscribe(person -> System.out.println("Person of type and after time: " + person.getStartTime()));
+    final Person record = new Person(UUID.randomUUID(), "John", "Doe", "UK", 50);
+    final Mono<ClientResponse> postResponse =
+        client
+            .post()
+            .uri("/people")
+            .body(Mono.just(record), Person.class)
+            .accept(APPLICATION_JSON)
+            .exchange();
+    postResponse
+        .flatMapMany(response -> response.bodyToFlux(Person.class))
+        .subscribe(person -> System.out.println("POST: " + person));
 
-    final Mono<ClientResponse> clientResponse3 = client.get()
-                                                   .uri("/events")
-                                                   .accept(MediaType.APPLICATION_JSON).exchange();
-    clientResponse3.flatMapMany(response -> response.bodyToFlux(Person.class)).subscribe(person -> System.out.println("All events: " + person.getStartTime()));
+    final Mono<ClientResponse> getResponse =
+        client
+            .get()
+            .uri("/people/{id}", "63782fe7-1394-437a-89f7-47f89d6046a0")
+            .accept(APPLICATION_JSON)
+            .exchange();
+    getResponse
+        .flatMapMany(response -> response.bodyToFlux(Person.class))
+        .subscribe(person -> System.out.println("GET: " + person));
+
+    final Mono<ClientResponse> allResponse =
+        client.get().uri("/people").accept(APPLICATION_JSON).exchange();
+    allResponse
+        .flatMapMany(response -> response.bodyToFlux(Person.class))
+        .subscribe(person -> System.out.println("ALL: " + person));
+
+    final Person updated = new Person(UUID.randomUUID(), "Laura", "So", "US", 18);
+    final Mono<ClientResponse> putResponse =
+        client
+            .put()
+            .uri("/people/{id}", "ec2212fc-669e-42ff-9c51-69782679c9fc")
+            .body(Mono.just(updated), Person.class)
+            .accept(APPLICATION_JSON)
+            .exchange();
+    putResponse
+        .flatMapMany(response -> response.bodyToFlux(Person.class))
+        .subscribe(person -> System.out.println("PUT: " + person));
+
+    final Mono<ClientResponse> deleteResponse =
+        client
+            .delete()
+            .uri("/people/{id}", "63782fe7-1394-437a-89f7-47f89d6046a0")
+            .accept(APPLICATION_JSON)
+            .exchange();
+    deleteResponse
+        .map(response -> response.statusCode())
+        .subscribe(status -> System.out.println("DELETE: " + status));
   }
 }

@@ -3,6 +3,7 @@ package com.lankydanblog.tutorial.person.repository.entity;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.data.cassandra.core.mapping.PrimaryKey;
 import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn;
 import org.springframework.data.cassandra.core.mapping.Table;
 
@@ -11,7 +12,7 @@ import static org.springframework.data.cassandra.core.cql.PrimaryKeyType.PARTITI
 @Table("people")
 public class PersonEntity {
 
-  @PrimaryKeyColumn(name = "person_id", type = PARTITIONED)
+  @PrimaryKey("person_id")
   private UUID id;
   private String firstName;
   private String lastName;
