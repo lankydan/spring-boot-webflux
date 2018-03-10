@@ -2,7 +2,7 @@ package com.lankydanblog.tutorial.client;
 
 import java.time.LocalDateTime;
 
-import com.lankydanblog.tutorial.event.Event;
+import com.lankydanblog.tutorial.person.Person;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -16,16 +16,16 @@ public class Client {
     final Mono<ClientResponse> clientResponse = client.get()
                                                   .uri("/events/{type}?time={time}", "notification", LocalDateTime.now().minusDays(10))
                                                   .accept(MediaType.APPLICATION_JSON).exchange();
-    clientResponse.flatMapMany(response -> response.bodyToFlux(Event.class)).subscribe(event -> System.out.println("Event of type: " + event.getStartTime()));
+    clientResponse.flatMapMany(response -> response.bodyToFlux(Person.class)).subscribe(person -> System.out.println("Person of type: " + person.getStartTime()));
 
     final Mono<ClientResponse> clientResponse2 = client.get()
                                                   .uri("/events/{type}", "notification")
                                                   .accept(MediaType.APPLICATION_JSON).exchange();
-    clientResponse2.flatMapMany(response -> response.bodyToFlux(Event.class)).subscribe(event -> System.out.println("Event of type and after time: " + event.getStartTime()));
+    clientResponse2.flatMapMany(response -> response.bodyToFlux(Person.class)).subscribe(person -> System.out.println("Person of type and after time: " + person.getStartTime()));
 
     final Mono<ClientResponse> clientResponse3 = client.get()
                                                    .uri("/events")
                                                    .accept(MediaType.APPLICATION_JSON).exchange();
-    clientResponse3.flatMapMany(response -> response.bodyToFlux(Event.class)).subscribe(event -> System.out.println("All events: " + event.getStartTime()));
+    clientResponse3.flatMapMany(response -> response.bodyToFlux(Person.class)).subscribe(person -> System.out.println("All events: " + person.getStartTime()));
   }
 }

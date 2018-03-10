@@ -1,4 +1,4 @@
-package com.lankydanblog.tutorial.event.web;
+package com.lankydanblog.tutorial.person.web;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,8 +13,8 @@ import static org.springframework.web.reactive.function.server.RequestPredicates
 public class EventRouter {
 
   @Bean
-  public RouterFunction<ServerResponse> route(EventHandler eventHandler) {
-    return RouterFunctions.route(GET("/events/{type}").and(accept(APPLICATION_JSON)), eventHandler::get)
-             .andRoute(GET("/events").and(accept(APPLICATION_JSON)), eventHandler::all);
+  public RouterFunction<ServerResponse> route(PersonHandler personHandler) {
+    return RouterFunctions.route(GET("/events/{type}").and(accept(APPLICATION_JSON)), personHandler::get)
+             .andRoute(GET("/events").and(accept(APPLICATION_JSON)), personHandler::all);
   }
 }
