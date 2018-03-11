@@ -24,8 +24,8 @@ public class Client {
             .accept(APPLICATION_JSON)
             .exchange();
     postResponse
-        .flatMapMany(response -> response.bodyToFlux(Person.class))
-        .subscribe(person -> System.out.println("POST: " + person));
+        .map(ClientResponse::statusCode)
+        .subscribe(status -> System.out.println("POST: " + status.getReasonPhrase()));
 
     final Mono<ClientResponse> getResponse =
         client
@@ -58,11 +58,11 @@ public class Client {
     final Mono<ClientResponse> deleteResponse =
         client
             .delete()
-            .uri("/people/{id}", "63782fe7-1394-437a-89f7-47f89d6046a0")
+            .uri("/people/{id}", "ec2212fc-669e-42ff-9c51-69782679c9fc")
             .accept(APPLICATION_JSON)
             .exchange();
     deleteResponse
-        .map(response -> response.statusCode())
+        .map(ClientResponse::statusCode)
         .subscribe(status -> System.out.println("DELETE: " + status));
   }
 }
