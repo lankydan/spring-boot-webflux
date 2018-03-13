@@ -30,8 +30,8 @@ public class Client {
     final Mono<ClientResponse> getResponse =
         client
             .get()
-            .uri("/people/{id}", "63782fe7-1394-437a-89f7-47f89d6046a0")
-            .accept(APPLICATION_JSON)
+            .uri("/people/{id}", "a4f66fe5-7c1b-4bcf-89b4-93d8fcbc52a4")
+//            .accept(APPLICATION_JSON)
             .exchange();
     getResponse
         .flatMapMany(response -> response.bodyToFlux(Person.class))
@@ -59,7 +59,6 @@ public class Client {
         client
             .delete()
             .uri("/people/{id}", "ec2212fc-669e-42ff-9c51-69782679c9fc")
-            .accept(APPLICATION_JSON)
             .exchange();
     deleteResponse
         .map(ClientResponse::statusCode)

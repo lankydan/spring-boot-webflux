@@ -57,12 +57,17 @@ public class PersonRouter {
 
     // DOES THE GET METHOD NEED AN `accept` DEFINED IT JUST READS THE PATH VARIABLE
 
+    // spring example uses content type for post, does put need the same?
+
+    // I think I do want accept for all except for DELETE
+    // and content type for POST and DELETE
+
 
     return RouterFunctions.route(GET("/people/{id}").and(accept(APPLICATION_JSON)), personHandler::get)
         .andRoute(GET("/people").and(accept(APPLICATION_JSON)), personHandler::all)
-        .andRoute(POST("/people").and(accept(APPLICATION_JSON)), personHandler::post)
-        .andRoute(PUT("/people/{id}").and(accept(APPLICATION_JSON)), personHandler::put)
-        .andRoute(DELETE("/people/{id}").and(accept(APPLICATION_JSON)), personHandler::delete)
+        .andRoute(POST("/people").and(accept(APPLICATION_JSON)).and(contentType(APPLICATION_JSON)), personHandler::post)
+        .andRoute(PUT("/people/{id}").and(accept(APPLICATION_JSON)).and(contentType(APPLICATION_JSON)), personHandler::put)
+        .andRoute(DELETE("/people/{id}"), personHandler::delete)
         .andRoute(GET("/people/country/{country}").and(accept(APPLICATION_JSON)), personHandler::getByCountry);
   }
 }
@@ -82,7 +87,9 @@ The next parameter is a `HandlerFunction` which is a Functional Interface. There
 
 Finally the output is a `RouterFunction`. This can then be returned and will be used to route to whatever function we specified. But normally we would want to route lots of different requests to various handers at once, which WebFlux caters for. Due to `route` returning a `RouteFunction` and the fact that `RouterFunction` also has its own routing method available, `andRoute`, we can chain the calls together and keep adding all the extra routes that we require.
 
-If we take another look back at the `PersonRouter` example above, we can see that there methods named after the REST verbs such as `GET` and `POST` that define the path and type of requests that a handler will take. If we take the first `GET` request for example, it is routing to `/people` with a path variable name `id` (path variable denoted by `{id}`) and the handler will only accept JSON content, specifically `APPLICATION_JSON` (static field from `MediaType`). If a different path is used, it will not be handled. If the path is correct but the content is of the wrong type, then an error will be retuned to the client that issue the request.
+If we take another look back at the `PersonRouter` example above, we can see that there methods named after the REST verbs such as `GET` and `POST` that define the path and type of requests that a handler will take. If we take the first `GET` request for example, it is routing to `/people` with a path variable name `id` (path variable denoted by `{id}`) and the type of the returned content, specifically `APPLICATION_JSON` (static field from `MediaType`) is defined using the `accept` method. If a different path is used, it will not be handled. If the path is correct but the content is of the wrong type, then an then the request might fail depending on the difference between the requested content and what is actually returned.
+
+Before we continue I want to go over the `accept` and `contentType` methods. Both of these set request headers, `accept` matches to the Accept header and `contentType` to Content-Type. The Accept header defines what Media Types are acceptable for the response, as we were returning JSON representations of the `Person` object setting it to `APPLICATION_JSON` makes sense. The Content-Type has the same idea but instead describes what Media Type is inside the body of the sent request. That is why only the `POST` and `PUT` verbs have `contentType` included as the others do not having anything contained in their bodies. `DELETE` does not included `accept` and `contentType` so we can conclude that it is neither expecting anything to be returned nor including anything in its request body.
 
 Now that we know how to setup the routes, lets look at writing the handler methods that deal with the incoming requests. Below is the handles all the requests from the routes that were defined in the earlier example.
 ```java
@@ -193,3 +200,14 @@ Even just from the first line we can see that it is already different to how the
 We will return a `CREATED` status using the `created` method that takes in a `URI` to determine the path to the inserted record. It then follows a similar setup as the `get` method by using the `fromPublisher` method to add the new record to the body of the response. The code that forms the `Publisher` is slightly different but the output is still a `Mono<Person>` which is what matters. Just for further explanation about how the inserting is done, the `Person` passed in from the request is is mapped to a new `Person` using the `UUID` we generated which itself is flat mapped to call `save`. By creating a new `Person` we are able to only inserts values into Cassandra that we allow, in this case we do not want the `UUID` passed in from the request body.
 
 So, that's about it when it comes to the handlers. Obviously the other methods that I didn't go through all work differently but they all follow the same concept of returning a `ServerResponse` that contains a suitable status code and record(s) in the body if required.
+
+We have now written all the code we need to get a basic Spring WebFlux back-end up a running. All that is left is to tie all the configuration together, which is easy with Spring Boot.
+```java
+@SpringBootApplication
+public class Application {
+  public static void main(String args[]) {
+    SpringApplication.run(Application.class);
+  }
+}
+```
+Rather than ending the post here we should probably look into how to actually make use of the code.
