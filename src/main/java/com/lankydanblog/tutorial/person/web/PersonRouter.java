@@ -12,7 +12,7 @@ public class PersonRouter {
 
   @Bean
   public RouterFunction<ServerResponse> route(PersonHandler personHandler) {
-    return RouterFunctions.route(GET("/people/{id}").and(RequestPredicates.accept(APPLICATION_JSON)), personHandler::get)
+    return RouterFunctions.route(GET("/people/{id}").and(accept(APPLICATION_JSON)), personHandler::get)
         .andRoute(GET("/people").and(accept(APPLICATION_JSON)), personHandler::all)
         .andRoute(POST("/people").and(accept(APPLICATION_JSON)), personHandler::post)
         .andRoute(PUT("/people/{id}").and(accept(APPLICATION_JSON)), personHandler::put)

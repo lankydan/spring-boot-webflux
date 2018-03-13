@@ -54,6 +54,10 @@ public class PersonRouter {
 
   @Bean
   public RouterFunction<ServerResponse> route(PersonHandler personHandler) {
+
+    // DOES THE GET METHOD NEED AN `accept` DEFINED IT JUST READS THE PATH VARIABLE
+
+
     return RouterFunctions.route(GET("/people/{id}").and(accept(APPLICATION_JSON)), personHandler::get)
         .andRoute(GET("/people").and(accept(APPLICATION_JSON)), personHandler::all)
         .andRoute(POST("/people").and(accept(APPLICATION_JSON)), personHandler::post)
@@ -72,6 +76,120 @@ public static <T extends ServerResponse> RouterFunction<T> route(
 ```
 The method shows that it takes in a `RequestPredicate` along with a `HandlerFunction` and outputs a `RouterFunction`. 
 
-The `RequestPredicate` is what we use to specify behavior of the route, such as the path to our handler function, what type of request it is and what type of input it can accept. Due to my use of static imports to make everything read a bit clearer, some important information has been hidden from you. To create a `RequestPredicate` we should use the `RequestPredicates` (plural), a static helper class providing us with all the methods we need. Personally I do recommend statically importing `RequestPredicates` otherwise you code will be a mess due to the amount of times you might need to make use of `RequestPredicates` static methods.
+The `RequestPredicate` is what we use to specify behavior of the route, such as the path to our handler function, what type of request it is and what type of input it can accept. Due to my use of static imports to make everything read a bit clearer, some important information has been hidden from you. To create a `RequestPredicate` we should use the `RequestPredicates` (plural), a static helper class providing us with all the methods we need. Personally I do recommend statically importing `RequestPredicates` otherwise you code will be a mess due to the amount of times you might need to make use of `RequestPredicates` static methods. In the above example, `GET`, `POST`, `PUT`, `DELETE` and `accept` are all static `RequestPredicates` methods.
 
-The next parameter is a `HandlerFunction` which is a Functional Interface. There are two pieces of important information here, it's generic type of `<T extends ServerResponse>` and its `handle` method that returns a `Mono<T>`. Using these we can determine that we need to pass in a function that returns a `Mono<ServerResponse>` (or one of it's subtypes). This obviously places a heavy constraint onto what is returned from our handler functions as they must meet this requirement or they will not be suitable for use in this format.
+The next parameter is a `HandlerFunction` which is a Functional Interface. There are three pieces of important information here, it's generic type of `<T extends ServerResponse>` and its `handle` method that returns a `Mono<T>` while taking in a `ServerRequest`. Using these we can determine that we need to pass in a function that returns a `Mono<ServerResponse>` (or one of it's subtypes). This obviously places a heavy constraint onto what is returned from our handler functions as they must meet this requirement or they will not be suitable for use in this format.
+
+Finally the output is a `RouterFunction`. This can then be returned and will be used to route to whatever function we specified. But normally we would want to route lots of different requests to various handers at once, which WebFlux caters for. Due to `route` returning a `RouteFunction` and the fact that `RouterFunction` also has its own routing method available, `andRoute`, we can chain the calls together and keep adding all the extra routes that we require.
+
+If we take another look back at the `PersonRouter` example above, we can see that there methods named after the REST verbs such as `GET` and `POST` that define the path and type of requests that a handler will take. If we take the first `GET` request for example, it is routing to `/people` with a path variable name `id` (path variable denoted by `{id}`) and the handler will only accept JSON content, specifically `APPLICATION_JSON` (static field from `MediaType`). If a different path is used, it will not be handled. If the path is correct but the content is of the wrong type, then an error will be retuned to the client that issue the request.
+
+Now that we know how to setup the routes, lets look at writing the handler methods that deal with the incoming requests. Below is the handles all the requests from the routes that were defined in the earlier example.
+```java
+@Component
+public class PersonHandler {
+
+  private final PersonManager personManager;
+
+  public PersonHandler(PersonManager personManager) {
+    this.personManager = personManager;
+  }
+
+  public Mono<ServerResponse> get(ServerRequest request) {
+    final UUID id = UUID.fromString(request.pathVariable("id"));
+    final Mono<Person> person = personManager.findById(id);
+    return person
+        .flatMap(p -> ok().contentType(APPLICATION_JSON).body(fromPublisher(person, Person.class)))
+        .switchIfEmpty(notFound().build());
+  }
+
+  public Mono<ServerResponse> all(ServerRequest request) {
+    return ok().contentType(APPLICATION_JSON)
+        .body(fromPublisher(personManager.findAll(), Person.class));
+  }
+
+  public Mono<ServerResponse> put(ServerRequest request) {
+    final UUID id = UUID.fromString(request.pathVariable("id"));
+    final Mono<Person> person = request.bodyToMono(Person.class);
+    return personManager
+        .findById(id)
+        .flatMap(
+            old ->
+                ok().contentType(APPLICATION_JSON)
+                    .body(
+                        fromPublisher(
+                            person
+                                .map(p -> new Person(p, id))
+                                .flatMap(p -> personManager.update(old, p)),
+                            Person.class))
+                    .switchIfEmpty(notFound().build()));
+  }
+
+  public Mono<ServerResponse> post(ServerRequest request) {
+    final Mono<Person> person = request.bodyToMono(Person.class);
+    final UUID id = UUID.randomUUID();
+    return created(UriComponentsBuilder.fromPath("people/" + id).build().toUri())
+        .contentType(APPLICATION_JSON)
+        .body(
+            fromPublisher(
+                person.map(p -> new Person(p, id)).flatMap(personManager::save),
+                Person.class));
+  }
+
+  public Mono<ServerResponse> delete(ServerRequest request) {
+    final UUID id = UUID.fromString(request.pathVariable("id"));
+    return personManager
+        .findById(id)
+        .flatMap(p -> noContent().build(personManager.delete(p)))
+        .switchIfEmpty(notFound().build());
+  }
+
+  public Mono<ServerResponse> getByCountry(ServerRequest serverRequest) {
+    final String country = serverRequest.pathVariable("country");
+    return ok().contentType(APPLICATION_JSON)
+        .body(fromPublisher(personManager.findAllByCountry(country), Person.class));
+  }
+}
+```
+One thing that is quite noticable, is the lack of annotations. Bar the `@Component` annotation to auto create a `PersonHandler` bean there are no other Spring annotations.
+
+I have tried to keep most of the repsitory logic out of this class and have hidden any references to the entity objects by going via the `PersonManager` that delegates to `PersonRepository` is contains within in it. If you are interested in the code within `PersonManager` then it can be seen here on my [GitHub](URL), further explanations about it will be excluded for this post so we can focus on WebFlux itself.
+
+Ok, back to the code at hand. Let's take a closer look at the `get` and `post` methods to figure out what is going on.
+```java
+public Mono<ServerResponse> get(ServerRequest request) {
+  final UUID id = UUID.fromString(request.pathVariable("id"));
+  final Mono<Person> person = personManager.findById(id);
+  return person
+      .flatMap(p -> ok().contentType(APPLICATION_JSON).body(fromPublisher(person, Person.class)))
+      .switchIfEmpty(notFound().build());
+}
+```
+This method is for retrival of a single record from the database that backs this example application. Due to Cassandra being the database of choice I have decided to use an `UUID` for the primary key of each record, this has the unfortunate effect of making testing the example more annoying but nothing that some copy and pasting can't solve. 
+
+Remember that a path variable was included in the path for this `GET` request. Using the `pathVariable` method on the `ServerRequest` passed into the method we are able to extract it's value by providing the name of the variable, in this case `id`. The ID is then converted into a `UUID`, which will throw an exception if the string is not in the correct format, I decided to ignore this problem so the example code doesn't get messier.
+
+Once we have the ID, we can query the database for the existance of a matching record. A `Mono<Person>` is returned (the actual repository returns the same type) which either contains the existing record mapped to a `Person` or it left as an empty `Mono`. 
+
+Using the returned `Mono` we can return different responses depends on it's existance. This means we can return useful status codes to the client to go along with the methods output. Using `flatMap` a `ServerResponse` with the `OK` status is created if the record exists. Along with this status we want to output the record that was found, to do this we specify the content type of the body, in this case `APPLICATION_JSON`, and add the record into it. `fromPublisher` takes our `Mono<Person>` (which is a `Publisher`) along with the `Person` class so it know what it is mapping into the body. `fromPublisher` is a static method from the `BodyInserters` class.
+
+If the record does not exist, then the flow will move into the `switchIfEmpty` block and return a `NOT FOUND` status. As nothing is found, the is nothing that needs to be added into the body so we just create the `ServerResponse` there are then.
+
+Now onto the `post` handler.
+```java
+public Mono<ServerResponse> post(ServerRequest request) {
+  final Mono<Person> person = request.bodyToMono(Person.class);
+  final UUID id = UUID.randomUUID();
+  return created(UriComponentsBuilder.fromPath("people/" + id).build().toUri())
+      .contentType(APPLICATION_JSON)
+      .body(
+          fromPublisher(
+              person.map(p -> new Person(p, id)).flatMap(personManager::save),
+              Person.class));
+}
+```
+Even just from the first line we can see that it is already different to how the `get` method was working. As this is a `POST` request it needs to accept the object that we want to persist from the body of the request. As we are trying to insert a single record we will use the request's `bodyToMono` method to retrieve the `Person` from the body. If you were dealing with multiple records you would probably want to use `bodyToFlux` instead.
+
+We will return a `CREATED` status using the `created` method that takes in a `URI` to determine the path to the inserted record. It then follows a similar setup as the `get` method by using the `fromPublisher` method to add the new record to the body of the response. The code that forms the `Publisher` is slightly different but the output is still a `Mono<Person>` which is what matters. Just for further explanation about how the inserting is done, the `Person` passed in from the request is is mapped to a new `Person` using the `UUID` we generated which itself is flat mapped to call `save`. By creating a new `Person` we are able to only inserts values into Cassandra that we allow, in this case we do not want the `UUID` passed in from the request body.
+
+So, that's about it when it comes to the handlers. Obviously the other methods that I didn't go through all work differently but they all follow the same concept of returning a `ServerResponse` that contains a suitable status code and record(s) in the body if required.

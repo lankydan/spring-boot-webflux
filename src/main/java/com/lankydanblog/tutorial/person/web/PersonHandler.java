@@ -23,8 +23,6 @@ public class PersonHandler {
     this.personManager = personManager;
   }
 
-  // why use the server response object?
-
   public Mono<ServerResponse> get(ServerRequest request) {
     final UUID id = UUID.fromString(request.pathVariable("id"));
     final Mono<Person> person = personManager.findById(id);
@@ -58,11 +56,11 @@ public class PersonHandler {
   public Mono<ServerResponse> post(ServerRequest request) {
     final Mono<Person> person = request.bodyToMono(Person.class);
     final UUID id = UUID.randomUUID();
-    return created(UriComponentsBuilder.fromPath("person/get/" + id).build().toUri())
+    return created(UriComponentsBuilder.fromPath("people/" + id).build().toUri())
         .contentType(APPLICATION_JSON)
         .body(
             fromPublisher(
-                person.map(p -> new Person(p, id)).flatMap(p -> personManager.save(p)),
+                person.map(p -> new Person(p, id)).flatMap(personManager::save),
                 Person.class));
   }
 
