@@ -1,8 +1,8 @@
-So Spring Boot 2.0 when GA recently, so I decided to write my first post about Spring for quite a while. Since the release I have been seeing more mentions of Spring WebFlux along with tutorials on how to use it, but after reading through them and trying to get it working myself I found it a bit hard to make the jump from the posts and tutorials that I read to actually write some code that actually does something a tiny bit more interesting than returning a string from the back-end. Now, I'm hoping I'm not shooting myself in the foot by saying that as you could probably make the same criticism of the code I use in this post, but here is my attempt to give a tutorial of Spring WebFlux that actually resembles something that you might use in the wild.
+So Spring Boot 2.0 when GA recently, so I decided to write my first post about Spring for quite a while. Since the release I have been seeing more and more mentions of Spring WebFlux along with tutorials on how to use it. But after reading through them and trying to get it working myself, I found it a bit hard to make the jump from the code included in the posts and tutorials I read to writing code that actually does something a tiny bit more interesting than returning a string from the back-end. Now, I'm hoping I'm not shooting myself in the foot by saying that as you could probably make the same criticism of the code I use in this post, but here is my attempt to give a tutorial of Spring WebFlux that actually resembles something that you might use in the wild.
 
-Before I continue and after all this mentioning of WebFlux, what actually is it? Spring WebFlux is a fully non-blocking reactive alternative to Spring MVC. This allows better vertical scaling without increasing your hardware resources. Being reactive it now makes use of Reactive Streams to allow asynchronous processing of data returned from calls to the server. This means we are going to see a lot less `List`s, `Collection`s or even single objects and instead their reactive equivalents such as `Flux` and `Mono` (if you are using Reactor). I'm not going to go to in depth on what Reactive Streams are, as honestly I need to look into it even more myself before I try to explain it to anyone. Instead lets get back to focusing on WebFlux.
+Before I continue, and after all this mentioning of WebFlux, what actually is it? Spring WebFlux is a fully non-blocking reactive alternative to Spring MVC. It allows better vertical scaling without increasing your hardware resources. Being reactive it now makes use of Reactive Streams to allow asynchronous processing of data returned from calls to the server. This means we are going to see a lot less `List`s, `Collection`s or even single objects and instead their reactive equivalents such as `Flux` and `Mono` (from Reactor). I'm not going to go to in depth on what Reactive Streams are, as honestly I need to look into it even more myself before I try to explain it to anyone. Instead lets get back to focusing on WebFlux.
 
-I use Spring Boot to write the code in this tutorial as usual.
+I used Spring Boot to write the code in this tutorial as usual.
 
 Below are the dependencies that I used in this post.
 ```xml
@@ -21,7 +21,7 @@ Below are the dependencies that I used in this post.
 
 </dependencies>
 ```
-Although I didn't include it in the dependency snippet above, the `spring-boot-start-parent` is used, which can finally be upped to version `2.0.0.RELEASE`. Being this tutorial is about WebFlux, including the `spring-boot-starter-webflux` is obviously a good idea. `spring-boot-starter-data-cassandra-reactive` has also been included as we will be using this as the database for the example application as it is one of the few databases that have reactive support (at the time of writing). By using these dependencies together our application can be fully reactive from front to back.
+Although I didn't include it in the dependency snippet above, the `spring-boot-starter-parent` is used, which can finally be upped to version `2.0.0.RELEASE`. Being this tutorial is about WebFlux, including the `spring-boot-starter-webflux` is obviously a good idea. `spring-boot-starter-data-cassandra-reactive` has also been included as we will be using this as the database for the example application as it is one of the few databases that have reactive support (at the time of writing). By using these dependencies together our application can be fully reactive from front to back.
 
 WebFlux introduces a different way to handle requests instead of using the `@Controller` or `@RestController` programming model that is used in Spring MVC. But, it does not replace it. Instead it has been updated to allow reactive types to be used. This allows you to keep the same format that you are used to writing with Spring but with a few changes to the return types so `Flux`s or `Mono`s are returned instead. Below is a very contrived example.
 ```java
@@ -47,22 +47,13 @@ public class PersonController {
 ```
 To me this looks very familiar and from a quick glance it doesn't really look any different from your standard Spring MVC controller, but after reading through the methods we can see the different return types from what we would normally expect. In this example `PersonRepository` must be a reactive repository as we have been able to directly return the results of their search queries, for reference, reactive repositories will return a `Flux` for collections and a `Mono` for singular entities.
 
-The annotation method is not what I want to focus on in this post though. It's not cool and hip enough for us. There isn't enough use of lambdas to satisfy our thirst for writing Java in a more functional way. But Spring WebFlux has our backs. It provides an alternative method to route and handle requests to our servers that lightly uses lambdas to write our router functions. Let's take a look at an example.
+The annotation method is not what I want to focus on in this post though. It's not cool and hip enough for us. There isn't enough use of lambdas to satisfy our thirst for writing Java in a more functional way. But Spring WebFlux has our backs. It provides an alternative method to route and handle requests to our servers that lightly uses lambdas to write router functions. Let's take a look at an example.
 ```java
 @Configuration
 public class PersonRouter {
 
   @Bean
   public RouterFunction<ServerResponse> route(PersonHandler personHandler) {
-
-    // DOES THE GET METHOD NEED AN `accept` DEFINED IT JUST READS THE PATH VARIABLE
-
-    // spring example uses content type for post, does put need the same?
-
-    // I think I do want accept for all except for DELETE
-    // and content type for POST and DELETE
-
-
     return RouterFunctions.route(GET("/people/{id}").and(accept(APPLICATION_JSON)), personHandler::get)
         .andRoute(GET("/people").and(accept(APPLICATION_JSON)), personHandler::all)
         .andRoute(POST("/people").and(accept(APPLICATION_JSON)).and(contentType(APPLICATION_JSON)), personHandler::post)
@@ -72,7 +63,7 @@ public class PersonRouter {
   }
 }
 ```
-These are all the routes to methods on the `PersonHandler` which we will look at later on. We have created a bean that will handle our routing. To setup the routing functions we use the well named `RoutingFunctions` providing us with a load of static methods but we are only currently interested with it's `route` method. Below is the signature of the `route` method.
+These are all the routes to methods in the `PersonHandler` which we will look at later on. We have created a bean that will handle our routing. To setup the routing functions we use the well named `RoutingFunctions` class providing us with a load of static methods, but for now we are only interested with it's `route` method. Below is the signature of the `route` method.
 ```java
 public static <T extends ServerResponse> RouterFunction<T> route(
       RequestPredicate predicate, HandlerFunction<T> handlerFunction) {
@@ -87,7 +78,7 @@ The next parameter is a `HandlerFunction` which is a Functional Interface. There
 
 Finally the output is a `RouterFunction`. This can then be returned and will be used to route to whatever function we specified. But normally we would want to route lots of different requests to various handers at once, which WebFlux caters for. Due to `route` returning a `RouteFunction` and the fact that `RouterFunction` also has its own routing method available, `andRoute`, we can chain the calls together and keep adding all the extra routes that we require.
 
-If we take another look back at the `PersonRouter` example above, we can see that there methods named after the REST verbs such as `GET` and `POST` that define the path and type of requests that a handler will take. If we take the first `GET` request for example, it is routing to `/people` with a path variable name `id` (path variable denoted by `{id}`) and the type of the returned content, specifically `APPLICATION_JSON` (static field from `MediaType`) is defined using the `accept` method. If a different path is used, it will not be handled. If the path is correct but the content is of the wrong type, then an then the request might fail depending on the difference between the requested content and what is actually returned.
+If we take another look back at the `PersonRouter` example above, we can see that there methods named after the REST verbs such as `GET` and `POST` that define the path and type of requests that a handler will take. If we take the first `GET` request for example, it is routing to `/people` with a path variable name `id` (path variable denoted by `{id}`) and the type of the returned content, specifically `APPLICATION_JSON` (static field from `MediaType`) is defined using the `accept` method. If a different path is used, it will not be handled. If the path is correct but the Accept header is not one of the accepted types, then an then the request will fail.
 
 Before we continue I want to go over the `accept` and `contentType` methods. Both of these set request headers, `accept` matches to the Accept header and `contentType` to Content-Type. The Accept header defines what Media Types are acceptable for the response, as we were returning JSON representations of the `Person` object setting it to `APPLICATION_JSON` makes sense. The Content-Type has the same idea but instead describes what Media Type is inside the body of the sent request. That is why only the `POST` and `PUT` verbs have `contentType` included as the others do not having anything contained in their bodies. `DELETE` does not included `accept` and `contentType` so we can conclude that it is neither expecting anything to be returned nor including anything in its request body.
 
@@ -119,17 +110,16 @@ public class PersonHandler {
     final UUID id = UUID.fromString(request.pathVariable("id"));
     final Mono<Person> person = request.bodyToMono(Person.class);
     return personManager
-        .findById(id)
-        .flatMap(
-            old ->
-                ok().contentType(APPLICATION_JSON)
-                    .body(
-                        fromPublisher(
-                            person
-                                .map(p -> new Person(p, id))
-                                .flatMap(p -> personManager.update(old, p)),
-                            Person.class))
-                    .switchIfEmpty(notFound().build()));
+             .findById(id)
+             .flatMap(
+               old ->
+                 ok().contentType(APPLICATION_JSON)
+                   .body(
+                     fromPublisher(
+                       person
+                         .map(p -> new Person(p, id))
+                         .flatMap(p -> personManager.update(old, p)),
+                       Person.class))).switchIfEmpty(notFound().build());
   }
 
   public Mono<ServerResponse> post(ServerRequest request) {
@@ -211,3 +201,148 @@ public class Application {
 }
 ```
 Rather than ending the post here we should probably look into how to actually make use of the code.
+
+Spring provides the `WebClient` class to handle requests without blocking. We can make use of this now as a way to test the application, although there is also a `WebTestClient` which we could use here instead. The `WebClient` is also what you would use instead of the blocking `RestTemplate` when creating a reactive application.
+
+Below is some code that calls the handlers that were defined in the `PersonHandler`.
+```java
+public class Client {
+
+  private final WebClient client = WebClient.create("http://localhost:8080");
+
+  public void doStuff() {
+
+    final Person record = new Person(UUID.randomUUID(), "John", "Doe", "UK", 50);
+    final Mono<ClientResponse> postResponse =
+      client
+        .post()
+        .uri("/people")
+        .body(Mono.just(record), Person.class)
+        .accept(APPLICATION_JSON)
+        .exchange();
+    postResponse
+      .map(ClientResponse::statusCode)
+      .subscribe(status -> System.out.println("POST: " + status.getReasonPhrase()));
+
+    // GET
+    client
+      .get()
+      .uri("/people/{id}", "a4f66fe5-7c1b-4bcf-89b4-93d8fcbc52a4")
+      .accept(APPLICATION_JSON)
+      .exchange()
+      .flatMap(response -> response.bodyToMono(Person.class))
+      .subscribe(person -> System.out.println("GET: " + person));
+
+    // ALL
+    client.get().uri("/people").accept(APPLICATION_JSON).exchange()
+      .flatMapMany(response -> response.bodyToFlux(Person.class))
+      .subscribe(person -> System.out.println("ALL: " + person));
+    
+    // PUT
+    final Person updated = new Person(UUID.randomUUID(), "Laura", "So", "US", 18);
+    client
+      .put()
+      .uri("/people/{id}", "ec2212fc-669e-42ff-9c51-69782679c9fc")
+      .body(Mono.just(updated), Person.class)
+      .exchange()
+      .flatMapMany(response -> response.bodyToFlux(Person.class))
+      .subscribe(person -> System.out.println("PUT: " + person));
+
+    // DELETE
+    client
+      .delete()
+      .uri("/people/{id}", "ec2212fc-669e-42ff-9c51-69782679c9fc")
+      .exchange()
+      .map(ClientResponse::statusCode)
+      .subscribe(status -> System.out.println("DELETE: " + status));
+  }
+}
+```
+Don't forget to instantiate the `Client` somewhere, below is a nice lazy way to do it!
+```java
+@SpringBootApplication
+public class Application {
+
+  public static void main(String args[]) {
+    SpringApplication.run(Application.class);
+    Client client = new Client();
+    client.doStuff();
+  }
+}
+```
+First we create the `WebClient`.
+```java
+private final WebClient client = WebClient.create("http://localhost:8080");
+```
+Once created we can start doing stuff with it, hence the `doStuff` method.
+
+Let's break down the `POST` request that is being send to the back-end.
+```java
+final Mono<ClientResponse> postResponse =
+  client
+    .post()
+    .uri("/people")
+    .body(Mono.just(record), Person.class)
+    .accept(APPLICATION_JSON)
+    .exchange();
+postResponse
+  .map(ClientResponse::statusCode)
+  .subscribe(status -> System.out.println("POST: " + status.getReasonPhrase()));
+```
+I wrote this one down slightly differently so you can see that a `Mono<ClientResponse>` is returned from sending a request. The `exchange` method fires the HTTP request over to the server. The response will then be dealt with whenever the response arrives, if it ever does.
+
+Using the `WebClient` we specify that we want to send a `POST` request using the `post` method of course. The `URI` is then added with the `uri` method (overloaded method, this one takes in a `String` but another accepts a `URI`). Im tired of saying this method does what the method is called so, the contents of the body are then added along with the Accept header. Finally we send the request by calling `exchange`. 
+
+Note that the Media Type of `APPLICATION_JSON` matches up with the type defined in the `POST` router function. If we were to send a different type, say `TEXT_PLAIN` we would get a `404` error as no handler exists that matches to what the request is sending.
+
+Using the `Mono<ClientReponse>` returned by calling `exchange` we can map it's contents to our desired output. In the case of the example above, the status code is printed out on the console. If we think back to the `post` method in `PersonHandler`, remember that it can only return the "Created" status, but if the sent request does not match up correctly then "Not Found" will be printed out.
+
+Let's look at one of the other requests.
+```java
+client
+  .get()
+  .uri("/people/{id}", "a4f66fe5-7c1b-4bcf-89b4-93d8fcbc52a4")
+  .accept(APPLICATION_JSON)
+  .exchange()
+  .flatMap(response -> response.bodyToMono(Person.class))
+  .subscribe(person -> System.out.println("GET: " + person));
+```
+This is our typical `GET` request. It looks pretty similar to the `POST` request we just went through. The main differences are that `uri` takes in both the path of the request and the `UUID` (as a `String` in this case) as a parameter to that will replace the path variable `{id}` and that nothing is passed into the body of the request. How the response is handled is also different. In this example it extracts the body of the response and maps it to a `Mono<Person>` and prints it out. This could have been done with the previous `POST` example but the status code of the response was more useful for it's scenario.
+
+For a slightly different perspective, we could use cURL to make requests and see what the response looks like.
+```
+CURL localhost:8090/people Accept:application/json
+```json
+[
+  {
+      "id": "13c403a2-6770-4174-8b76-7ba7b75ef73d",
+      "firstName": "John",
+      "lastName": "Doe",
+      "country": "UK",
+      "age": 50
+  },
+  {
+      "id": "fbd53e55-7313-4759-ad74-6fc1c5df0986",
+      "firstName": "Peter",
+      "lastName": "Parker",
+      "country": "US",
+      "age": 50
+  }
+]
+```
+The response will look something like this, obviously it will differ depending on the data you have stored.
+
+The headers of the response will be.
+```
+Content-Type: application/json
+transfer-encoding: chunked
+```
+The `transfer-encoding` here represents data that is transfered in chunks that can be used to stream data. This is what we need so the client can act reactively to the data that is returned to it.
+
+I think that this should be a good place to stop. We have covered quite a lot of material here which has hopefully helped you understand Spring WebFlux better. There are a few other topics I want to cover about WebFlux but I will do those in separate posts as I think this one is long enough as it is.
+
+In conclusion, in this post we very briefly discussed why you would want to use Spring WebFlux over a typical Spring MVC back-end. We then looked at how to setup routes and the handlers that will process the incoming requests. The handlers implemented methods that could deal with most of the REST verbs and returned the correct data and status codes in their responses. 
+
+If you are interested in looking at the rest of the code I used to create the example application for this post, it can be found on my [GitHub](URL).
+
+As always if you found this post helpful, please share it and if you want ot keep up with my latest posts then you can follow me on Twitter at [@LankyDanDev](URL).
