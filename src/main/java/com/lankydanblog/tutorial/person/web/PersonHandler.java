@@ -39,29 +39,18 @@ public class PersonHandler {
   public Mono<ServerResponse> put(ServerRequest request) {
     final UUID id = UUID.fromString(request.pathVariable("id"));
     final Mono<Person> person = request.bodyToMono(Person.class);
-//    return personManager
-//        .findById(id)
-//        .flatMap(
-//            old ->
-//                ok().contentType(APPLICATION_JSON)
-//                    .body(
-//                        fromPublisher(
-//                            person
-//                                .map(p -> new Person(p, id))
-//                                .flatMap(p -> personManager.update(old, p)),
-//                            Person.class))
-//                    .switchIfEmpty(notFound().build()));
     return personManager
-             .findById(id)
-             .flatMap(
-               old ->
-                 ok().contentType(APPLICATION_JSON)
-                   .body(
-                     fromPublisher(
-                       person
-                         .map(p -> new Person(p, id))
-                         .flatMap(p -> personManager.update(old, p)),
-                       Person.class))).switchIfEmpty(notFound().build());
+        .findById(id)
+        .flatMap(
+            old ->
+                ok().contentType(APPLICATION_JSON)
+                    .body(
+                        fromPublisher(
+                            person
+                                .map(p -> new Person(p, id))
+                                .flatMap(p -> personManager.update(old, p)),
+                            Person.class)))
+        .switchIfEmpty(notFound().build());
   }
 
   public Mono<ServerResponse> post(ServerRequest request) {
@@ -71,8 +60,7 @@ public class PersonHandler {
         .contentType(APPLICATION_JSON)
         .body(
             fromPublisher(
-                person.map(p -> new Person(p, id)).flatMap(personManager::save),
-                Person.class));
+                person.map(p -> new Person(p, id)).flatMap(personManager::save), Person.class));
   }
 
   public Mono<ServerResponse> delete(ServerRequest request) {

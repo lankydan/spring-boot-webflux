@@ -14,6 +14,7 @@ public class PersonEntity {
 
   @PrimaryKey("person_id")
   private UUID id;
+
   private String firstName;
   private String lastName;
   private String country;
@@ -69,14 +70,14 @@ public class PersonEntity {
 
   @Override
   public boolean equals(Object o) {
-    if(this == o) return true;
-    if(o == null || getClass() != o.getClass()) return false;
-    PersonEntity that = (PersonEntity)o;
-    return age == that.age &&
-             Objects.equals(id, that.id) &&
-             Objects.equals(firstName, that.firstName) &&
-             Objects.equals(lastName, that.lastName) &&
-             Objects.equals(country, that.country);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    PersonEntity that = (PersonEntity) o;
+    return age == that.age
+        && Objects.equals(id, that.id)
+        && Objects.equals(firstName, that.firstName)
+        && Objects.equals(lastName, that.lastName)
+        && Objects.equals(country, that.country);
   }
 
   @Override
@@ -87,12 +88,20 @@ public class PersonEntity {
 
   @Override
   public String toString() {
-    return "PersonEntity{" +
-             "id=" + id +
-             ", firstName='" + firstName + '\'' +
-             ", lastName='" + lastName + '\'' +
-             ", country='" + country + '\'' +
-             ", age=" + age +
-             '}';
+    return "PersonEntity{"
+        + "id="
+        + id
+        + ", firstName='"
+        + firstName
+        + '\''
+        + ", lastName='"
+        + lastName
+        + '\''
+        + ", country='"
+        + country
+        + '\''
+        + ", age="
+        + age
+        + '}';
   }
 }

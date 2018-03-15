@@ -11,9 +11,7 @@ public class Person {
   private String country;
   private int age;
 
-  public Person() {
-
-  }
+  public Person() {}
 
   public Person(UUID id, String firstName, String lastName, String country, int age) {
     this.id = id;
@@ -73,14 +71,14 @@ public class Person {
 
   @Override
   public boolean equals(Object o) {
-    if(this == o) return true;
-    if(o == null || getClass() != o.getClass()) return false;
-    Person person = (Person)o;
-    return age == person.age &&
-             Objects.equals(id, person.id) &&
-             Objects.equals(firstName, person.firstName) &&
-             Objects.equals(lastName, person.lastName) &&
-             Objects.equals(country, person.country);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    Person person = (Person) o;
+    return age == person.age
+        && Objects.equals(id, person.id)
+        && Objects.equals(firstName, person.firstName)
+        && Objects.equals(lastName, person.lastName)
+        && Objects.equals(country, person.country);
   }
 
   @Override
@@ -90,12 +88,20 @@ public class Person {
 
   @Override
   public String toString() {
-    return "Person{" +
-             "id=" + id +
-             ", firstName='" + firstName + '\'' +
-             ", lastName='" + lastName + '\'' +
-             ", country='" + country + '\'' +
-             ", age=" + age +
-             '}';
+    return "Person{"
+        + "id="
+        + id
+        + ", firstName='"
+        + firstName
+        + '\''
+        + ", lastName='"
+        + lastName
+        + '\''
+        + ", country='"
+        + country
+        + '\''
+        + ", age="
+        + age
+        + '}';
   }
 }

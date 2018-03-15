@@ -14,10 +14,13 @@ public class PersonByCountryKey implements Serializable {
 
   @PrimaryKeyColumn(type = PARTITIONED)
   private String country;
+
   @PrimaryKeyColumn(name = "first_name", type = CLUSTERED, ordinal = 0)
   private String firstName;
+
   @PrimaryKeyColumn(name = "last_name", type = CLUSTERED, ordinal = 1)
   private String lastName;
+
   @PrimaryKeyColumn(name = "person_id", type = CLUSTERED, ordinal = 2)
   private UUID id;
 
@@ -62,13 +65,13 @@ public class PersonByCountryKey implements Serializable {
 
   @Override
   public boolean equals(Object o) {
-    if(this == o) return true;
-    if(o == null || getClass() != o.getClass()) return false;
-    PersonByCountryKey that = (PersonByCountryKey)o;
-    return Objects.equals(country, that.country) &&
-             Objects.equals(firstName, that.firstName) &&
-             Objects.equals(lastName, that.lastName) &&
-             Objects.equals(id, that.id);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    PersonByCountryKey that = (PersonByCountryKey) o;
+    return Objects.equals(country, that.country)
+        && Objects.equals(firstName, that.firstName)
+        && Objects.equals(lastName, that.lastName)
+        && Objects.equals(id, that.id);
   }
 
   @Override
@@ -79,11 +82,18 @@ public class PersonByCountryKey implements Serializable {
 
   @Override
   public String toString() {
-    return "PersonByCountryKey{" +
-             "country='" + country + '\'' +
-             ", firstName='" + firstName + '\'' +
-             ", lastName='" + lastName + '\'' +
-             ", id=" + id +
-             '}';
+    return "PersonByCountryKey{"
+        + "country='"
+        + country
+        + '\''
+        + ", firstName='"
+        + firstName
+        + '\''
+        + ", lastName='"
+        + lastName
+        + '\''
+        + ", id="
+        + id
+        + '}';
   }
 }
