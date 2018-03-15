@@ -355,4 +355,4 @@ In conclusion, in this post we very briefly discussed why you would want to use 
 
 If you are interested in looking at the rest of the code I used to create the example application for this post, it can be found on my [GitHub](https://github.com/lankydan/spring-boot-webflux).
 
-As always if you found this post helpful, please share it and if you want ot keep up with my latest posts then you can follow me on Twitter at [@LankyDanDev](https://twitter.com/LankyDanDev).
+As always if you found this post helpful, please share it and if you want to keep up with my latest posts then you can follow me on Twitter at [@LankyDanDev](https://twitter.com/LankyDanDev).
