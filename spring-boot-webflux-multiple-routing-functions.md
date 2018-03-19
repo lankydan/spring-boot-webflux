@@ -41,9 +41,9 @@ public class MyRouter {
 ```
 The bean is now including a reference to the `LocationHandler` so the location route can be setup. The problem with this solution is that it requires the code to be coupled together.
 
-The way around this, as I keep mentioning is very simple, is to create multiple `RouterFunction` beans. That's it. So, if we create one in the people domain, say `PersonRouter` and one in the location domain named `LocationRouter`, each can define the routes that they need and Spring will do the rest. This works because when Spring go to create all the routes it goes through the application context and finds existing or creates any `RouterFunction` beans.
+The way around this, is to create multiple `RouterFunction` beans. That's it. So, if we create one in the people domain, say `PersonRouter` and one in the location domain named `LocationRouter`, each can define the routes that they need and Spring will do the rest. This works because when Spring go to create all the routes it goes through the application context and finds existing or creates any `RouterFunction` beans.
 
-If we take this information, a tidy solution is to write.
+Using this information we can write the code below.
 ```java
 @Configuration
 public class PersonRouter {
@@ -70,6 +70,81 @@ public class LocationRouter {
   }
 }
 ```
+`PersonRouter` can be kept with other people / person related code and `LocationRouter` can do the same.
+
+To make this more interesting, why does this work?
+
+`RouterFunctionMapping` is the class that retrieves all the `RouterFunction` beans created within the application context. The `RouterFunctionMapping` bean is created within `WebFluxConfigurationSupport` which is the epicenter for Spring WebFlux configuration. By including the `@EnableWebFlux` annotation on a configuration class a chain of events starts and collecting all of our `RouterFunction`s is one of them.
+
+Below is the `RouterFunctionMapping` class. I have removed it's constructors and a few methods to make the snippet here a bit easier to digest.
+```java
+public class RouterFunctionMapping extends AbstractHandlerMapping implements InitializingBean {
+
+	@Nullable
+	private RouterFunction<?> routerFunction;
+
+	private List<HttpMessageReader<?>> messageReaders = Collections.emptyList();
+
+	// constructors
+
+	// getRouterFunction
+
+	// setMessageReaders
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		if (CollectionUtils.isEmpty(this.messageReaders)) {
+			ServerCodecConfigurer codecConfigurer = ServerCodecConfigurer.create();
+			this.messageReaders = codecConfigurer.getReaders();
+		}
+
+		if (this.routerFunction == null) {
+			initRouterFunctions();
+		}
+	}
+
+	/**
+	 * Initialized the router functions by detecting them in the application context.
+	 */
+	protected void initRouterFunctions() {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Looking for router functions in application context: " +
+					getApplicationContext());
+		}
+
+		List<RouterFunction<?>> routerFunctions = routerFunctions();
+		if (!CollectionUtils.isEmpty(routerFunctions) && logger.isInfoEnabled()) {
+			routerFunctions.forEach(routerFunction -> logger.info("Mapped " + routerFunction));
+		}
+		this.routerFunction = routerFunctions.stream()
+				.reduce(RouterFunction::andOther)
+				.orElse(null);
+	}
+
+	private List<RouterFunction<?>> routerFunctions() {
+		SortedRouterFunctionsContainer container = new SortedRouterFunctionsContainer();
+		obtainApplicationContext().getAutowireCapableBeanFactory().autowireBean(container);
+
+		return CollectionUtils.isEmpty(container.routerFunctions) ? Collections.emptyList() :
+				container.routerFunctions;
+	}
+
+	// getHandlerInternal
+
+	private static class SortedRouterFunctionsContainer {
+
+		@Nullable
+		private List<RouterFunction<?>> routerFunctions;
+
+		@Autowired(required = false)
+		public void setRouterFunctions(List<RouterFunction<?>> routerFunctions) {
+			this.routerFunctions = routerFunctions;
+		}
+	}
+
+}
+```
+The path to retrieving all the routes starts in `afterPropertiesSet` which is invoked after the `RouterFunctionMapping` bean is created. 
 
 
 RouterFunctionMapping
