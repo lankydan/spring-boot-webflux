@@ -16,6 +16,6 @@ public class LocationRouter {
   @Bean
   public RouterFunction<ServerResponse> locationRoutes(LocationHandler locationHandler) {
     return RouterFunctions.route(
-        GET("/location/{id}").and(accept(APPLICATION_JSON)), locationHandler::get);
+        GET("/locations/{id}").and(accept(APPLICATION_JSON)), locationHandler::get);
   }
 }
