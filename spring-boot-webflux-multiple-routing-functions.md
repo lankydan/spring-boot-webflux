@@ -81,73 +81,73 @@ Below is the `RouterFunctionMapping` class. I have removed it's constructors and
 ```java
 public class RouterFunctionMapping extends AbstractHandlerMapping implements InitializingBean {
 
-	@Nullable
-	private RouterFunction<?> routerFunction;
+  @Nullable
+  private RouterFunction<?> routerFunction;
 
 	private List<HttpMessageReader<?>> messageReaders = Collections.emptyList();
 
-	// constructors
+  // constructors
 
-	// getRouterFunction
+  // getRouterFunction
 
-	// setMessageReaders
+  // setMessageReaders
 
-	@Override
-	public void afterPropertiesSet() throws Exception {
-		if (CollectionUtils.isEmpty(this.messageReaders)) {
-			ServerCodecConfigurer codecConfigurer = ServerCodecConfigurer.create();
-			this.messageReaders = codecConfigurer.getReaders();
-		}
+  @Override
+  public void afterPropertiesSet() throws Exception {
+    if (CollectionUtils.isEmpty(this.messageReaders)) {
+      ServerCodecConfigurer codecConfigurer = ServerCodecConfigurer.create();
+      this.messageReaders = codecConfigurer.getReaders();
+    }
 
-		if (this.routerFunction == null) {
-			initRouterFunctions();
-		}
-	}
+    if (this.routerFunction == null) {
+      initRouterFunctions();
+    }
+  }
 
 	/**
 	 * Initialized the router functions by detecting them in the application context.
 	 */
-	protected void initRouterFunctions() {
-		if (logger.isDebugEnabled()) {
-			logger.debug("Looking for router functions in application context: " +
-					getApplicationContext());
-		}
+  protected void initRouterFunctions() {
+    if (logger.isDebugEnabled()) {
+      logger.debug("Looking for router functions in application context: " +
+          getApplicationContext());
+    }
 
-		List<RouterFunction<?>> routerFunctions = routerFunctions();
-		if (!CollectionUtils.isEmpty(routerFunctions) && logger.isInfoEnabled()) {
-			routerFunctions.forEach(routerFunction -> logger.info("Mapped " + routerFunction));
-		}
-		this.routerFunction = routerFunctions.stream()
-				.reduce(RouterFunction::andOther)
-				.orElse(null);
-	}
+    List<RouterFunction<?>> routerFunctions = routerFunctions();
+    if (!CollectionUtils.isEmpty(routerFunctions) && logger.isInfoEnabled()) {
+      routerFunctions.forEach(routerFunction -> logger.info("Mapped " + routerFunction));
+    }
+    this.routerFunction = routerFunctions.stream()
+        .reduce(RouterFunction::andOther)
+        .orElse(null);
+  }
 
-	private List<RouterFunction<?>> routerFunctions() {
-		SortedRouterFunctionsContainer container = new SortedRouterFunctionsContainer();
-		obtainApplicationContext().getAutowireCapableBeanFactory().autowireBean(container);
+  private List<RouterFunction<?>> routerFunctions() {
+    SortedRouterFunctionsContainer container = new SortedRouterFunctionsContainer();
+    obtainApplicationContext().getAutowireCapableBeanFactory().autowireBean(container);
 
-		return CollectionUtils.isEmpty(container.routerFunctions) ? Collections.emptyList() :
-				container.routerFunctions;
-	}
+    return CollectionUtils.isEmpty(container.routerFunctions) ? Collections.emptyList() :
+        container.routerFunctions;
+  }
 
-	// getHandlerInternal
+  // getHandlerInternal
 
-	private static class SortedRouterFunctionsContainer {
+  private static class SortedRouterFunctionsContainer {
 
-		@Nullable
-		private List<RouterFunction<?>> routerFunctions;
+    @Nullable
+    private List<RouterFunction<?>> routerFunctions;
 
-		@Autowired(required = false)
-		public void setRouterFunctions(List<RouterFunction<?>> routerFunctions) {
-			this.routerFunctions = routerFunctions;
-		}
-	}
+    @Autowired(required = false)
+    public void setRouterFunctions(List<RouterFunction<?>> routerFunctions) {
+      this.routerFunctions = routerFunctions;
+    }
+  }
 
 }
 ```
-The path to retrieving all the routes starts in `afterPropertiesSet` that is invoked after the `RouterFunctionMapping` bean is created. As it's internal `RouterFunction` is `null` it calls `initRouterFunctions` triggering a series of methods leading to the execution of `routerFunctions`. A new `SortedRouterFunctionsContainer` is constructed (private static class) setting it's `routerFunctions` field by injecting all `RouterFunction`s from the application context. This works since Spring will inject all beans that of type `T` when a `List<T>` is being injected. The now retrieved `RouterFunction`s are combined together to make a single `RouterFunction` that is used from now on to route all incoming requests to the appropriate handler.
+The path to retrieving all the routes starts in `afterPropertiesSet` that is invoked after the `RouterFunctionMapping` bean is created. As it's internal `RouterFunction` is `null` it calls `initRouterFunctions` triggering a series of methods leading to the execution of `routerFunctions`. A new `SortedRouterFunctionsContainer` is constructed (private static class) setting it's `routerFunctions` field by injecting all `RouterFunction`s from the application context. This works since Spring will inject all beans of type `T` when a `List<T>` is injected. The now retrieved `RouterFunction`s are combined together to make a single `RouterFunction` that is used from now on to route all incoming requests to the appropriate handler.
 
-That's all there is to it. In conclusion defining multiple `RouterFunction`s for different business domains is very simple as you just create them in whatever area they most make sense and Spring will go off and fetch them all. To demistify some of the magic we looked into `RouterFunctionMapping` to see how the `RouterFunction`s we create are collected and combined so that they can be used to route requests to handlers. As a closing note, I do understand that this post in some respects is quite trivial but sometimes the seemingly obvious information can be pretty helpful.
+That's all there is to it. In conclusion defining multiple `RouterFunction`s for different business domains is very simple as you just create them in whatever area they most make sense and Spring will go off and fetch them all. To demystify some of the magic we looked into `RouterFunctionMapping` to see how the `RouterFunction`s we create are collected and combined so that they can be used to route requests to handlers. As a closing note, I do understand that this post in some respects is quite trivial but sometimes the seemingly obvious information can be pretty helpful.
 
 If you have not done so already, I recommend looking at my previous post [Doing stuff with Spring WebFlux](https://lankydanblog.com/2018/03/15/doing-stuff-with-spring-webflux/).
 
